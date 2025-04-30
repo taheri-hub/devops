@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hello-web-pod
+  namespace: thr
+  labels:
+    app: hello-web
+spec:
+  containers:
+  - name: hello-web
+    image: golang:1.21
+    command: ["/bin/sh", "-c"]
+    args:
+      - echo 'package main;import "net/http";func main(){http.HandleFunc("/",func(w http.ResponseWriter,_ *http.Request){w.Write([]byte("Hello Web!"))});http.ListenAndServe(":8080",nil)}' > main.go &&
+        go run main.go
+    ports:
+    - containerPort: 8080
+  restartPolicy: Never
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-web-service
+  namespace: thr
+spec:
+  selector:
+    app: hello-web
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hello-web-ingress
+  namespace: thr
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  rules:
+  - host: hello.jzac.ir
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: hello-web-service
+            port:
+              number: 80
